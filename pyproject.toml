@@ -1,0 +1,71 @@
+[project]
+name = "fpl-data-collector"
+version = "0.1.0"
+description = "Fantasy Premier League data collection and analytics tool"
+authors = [{name = "Author Name"}]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "pandas>=2.2",
+    "pydantic>=2.6",
+    "scikit-learn>=1.4",
+    "xgboost>=2.0",
+    "joblib>=1.3",
+    "matplotlib>=3.8",
+    "seaborn>=0.13",
+    "optuna>=4.7.0,<5.0.0",
+    "lightgbm>=4.6.0,<5.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "pandas-stubs>=2.2",
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+httpx = "^0.27"
+beautifulsoup4 = "^4.12"
+lxml = "^5.0"
+pandas = "^2.2"
+pydantic = "^2.6"
+scikit-learn = "^1.4"
+xgboost = "^2.0"
+joblib = "^1.3"
+matplotlib = "^3.8"
+seaborn = "^0.13"
+optuna = "^4.7.0,<5.0.0"
+lightgbm = "^4.6.0,<5.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+ruff = "^0.4"
+mypy = "^1.10"
+pandas-stubs = "^2.2"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

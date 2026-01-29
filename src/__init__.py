@@ -1,0 +1,1 @@
+"""FPL Data Collector package."""
