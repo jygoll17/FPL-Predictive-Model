@@ -157,6 +157,48 @@ Target metrics (from specification):
 4. **Time**: Full pipeline (collect + train + analyze) takes ~10 minutes
 5. **API Rate Limits**: Collector respects 0.5s delay between requests
 
+## Troubleshooting (macOS SSL / certificate errors)
+
+If you see an error like `ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate` when running Python scripts on macOS (Homebrew Python), Python can't find a valid CA bundle. The two safe fixes below are the simplest and recommended.
+
+1) Recommended — use certifi and export SSL_CERT_FILE
+
+```bash
+# Install/upgrade certifi
+python3 -m pip install --upgrade certifi
+
+# Set SSL_CERT_FILE for current session
+export SSL_CERT_FILE="$(python3 -c 'import certifi; print(certifi.where())')"
+
+# Make it permanent (add to ~/.zprofile)
+echo "export SSL_CERT_FILE=\"$(python3 -c 'import certifi; print(certifi.where())')\"" >> ~/.zprofile
+source ~/.zprofile
+```
+
+2) Alternate — use Homebrew OpenSSL certs
+
+```bash
+# Install openssl via Homebrew (if missing)
+brew install openssl
+
+# Point Python to the brew cert bundle (adjust prefix if needed)
+export SSL_CERT_FILE="/opt/homebrew/etc/openssl@3/cert.pem"
+echo 'export SSL_CERT_FILE="/opt/homebrew/etc/openssl@3/cert.pem"' >> ~/.zprofile
+source ~/.zprofile
+```
+
+Quick verification commands (run after applying one of the fixes):
+
+```bash
+# Print default verify paths
+python3 -c "import ssl, pprint; pprint.pprint(ssl.get_default_verify_paths())"
+
+# Test an HTTPS request
+python3 -c "import urllib.request; print(urllib.request.urlopen('https://pypi.org', timeout=10).status)"
+```
+
+Do not disable certificate verification globally (for example, by setting verify=False in requests) — pointing Python to a valid CA bundle is the correct and secure fix.
+
 ## License
 
 MIT License
