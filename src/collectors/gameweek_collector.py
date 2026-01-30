@@ -24,10 +24,14 @@ class GameweekCollector(BaseCollector):
         return await self._collect_from_api()
 
     async def _collect_from_csv(self) -> List[GameweekPerformance]:
-        """Collect from FPL-Data.co.uk CSV."""
+        """Collect from FPL-Data.co.uk CSV (only if URL returns real CSV with element IDs)."""
         csv_content = await self.fetch_csv(FPL_DATA_CSV_URL)
         if not csv_content:
             return []
+        # FPL-Data URL often returns HTML, not CSV; require header with "element" for player ID
+        first_line = csv_content.split("\n")[0].lower()
+        if "element" not in first_line and "element_id" not in first_line:
+            return []  # Fall back to API so we get proper fpl_id
 
         # Get player and team mappings
         bootstrap_data = await self.fetch_json(FPL_BOOTSTRAP_URL)

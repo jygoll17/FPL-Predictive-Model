@@ -49,8 +49,8 @@ class Player(BaseModel):
     chance_of_playing_this_round: Optional[int] = None
     chance_of_playing_next_round: Optional[int] = None
 
-    # News
-    news: str = Field(default="")
+    # News (can be None when loaded from CSV empty cells)
+    news: Optional[str] = Field(default="")
     news_added: Optional[str] = None
 
     # Stats

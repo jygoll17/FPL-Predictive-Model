@@ -10,6 +10,10 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from src.ml.check_omp import check_ml_backends
+
+check_ml_backends()
+
 from src.ml.features import FeatureEngineer
 from src.ml.model import FPLPointsModel
 from src.ml.training import TrainingPipeline

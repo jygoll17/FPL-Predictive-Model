@@ -37,6 +37,32 @@ export DYLD_LIBRARY_PATH=/opt/homebrew/opt/libomp/lib:$DYLD_LIBRARY_PATH
 poetry install
 ```
 
+### Alternative: pip + venv (no Poetry)
+
+If you prefer not to use Poetry or hit SSL certificate errors:
+
+```bash
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+
+# Install dependencies (use --trusted-host if you see SSL errors)
+pip install -r requirements.txt
+# Or with SSL workaround: pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt
+
+# macOS only: Install OpenMP (required for LightGBM/XGBoost)
+brew install libomp
+export DYLD_LIBRARY_PATH=/opt/homebrew/opt/libomp/lib:$DYLD_LIBRARY_PATH
+```
+
+Run scripts from the project root with the venv active:
+
+```bash
+python collect_data.py --status
+python train_model.py --quick
+python predict_points.py 24
+```
+
 ## Usage
 
 ### 1. Collect Data

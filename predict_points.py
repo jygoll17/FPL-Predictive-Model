@@ -9,6 +9,10 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from src.ml.check_omp import check_ml_backends
+
+check_ml_backends()
+
 from src.ml.predictor import FPLPredictor
 from src.storage import CSVHandler
 

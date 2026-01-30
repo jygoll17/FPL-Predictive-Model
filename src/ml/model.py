@@ -1,12 +1,18 @@
 """FPL Points Prediction Model (XGBoost + LightGBM Ensemble)."""
 
 import joblib
-from typing import Dict, List, Optional
+import warnings
+from typing import Any, Dict, List, Optional
 
-import lightgbm as lgb
 import numpy as np
 import xgboost as xgb
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+# LightGBM is optional; on macOS it requires libomp (brew install libomp)
+try:
+    import lightgbm as lgb
+except OSError:
+    lgb = None  # e.g. libomp not installed
 
 
 class FPLPointsModel:
@@ -27,8 +33,17 @@ class FPLPointsModel:
             ensemble_weight: Weight for XGBoost (1 - weight for LightGBM)
         """
         self.xgb_model: Optional[xgb.XGBRegressor] = None
-        self.lgbm_model: Optional[lgb.LGBMRegressor] = None
+        self.lgbm_model: Optional[Any] = None
         self.feature_names: List[str] = []
+        # Disable LightGBM if libomp not available (e.g. macOS without brew install libomp)
+        if lgbm_params is not None and lgb is None:
+            warnings.warn(
+                "LightGBM could not be loaded (e.g. libomp missing on macOS). "
+                "Using XGBoost only. Install with: brew install libomp",
+                UserWarning,
+                stacklevel=2,
+            )
+            lgbm_params = None
         self.ensemble_weight = ensemble_weight if lgbm_params is not None else 1.0
 
         # Default parameters (XGBoost always; LightGBM only when ensemble)
@@ -94,8 +109,8 @@ class FPLPointsModel:
             verbose=False,
         )
 
-        # Train LightGBM only when using ensemble
-        if self.lgbm_params is not None:
+        # Train LightGBM only when using ensemble and LightGBM is available
+        if self.lgbm_params is not None and lgb is not None:
             self.lgbm_model = lgb.LGBMRegressor(**self.lgbm_params)
             eval_set = [(X_val, y_val)] if X_val is not None else None
             self.lgbm_model.fit(

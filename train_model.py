@@ -5,9 +5,13 @@ import argparse
 import sys
 from pathlib import Path
 
-import pandas as pd
-
 sys.path.insert(0, str(Path(__file__).parent))
+
+from src.ml.check_omp import check_ml_backends
+
+check_ml_backends()
+
+import pandas as pd
 
 from src.config import MODELS_DIR
 from src.ml.training import TrainingPipeline
@@ -35,6 +39,16 @@ def main():
 
     if len(players_df) == 0 or len(clubs_df) == 0:
         print("Error: No data found. Run collect_data.py first.")
+        return
+
+    if len(gameweek_stats_df) == 0 or "player_id" not in gameweek_stats_df.columns:
+        print("Error: No gameweek stats or missing 'player_id' column.")
+        print("Collect data in order: players, clubs, fixtures, then gameweeks:")
+        print("  python collect_data.py --players")
+        print("  python collect_data.py --clubs")
+        print("  python collect_data.py --fixtures")
+        print("  python collect_data.py --gameweeks")
+        print("Or run: python collect_data.py  (to collect all)")
         return
 
     print(f"Loaded {len(players_df)} players, {len(clubs_df)} clubs, "

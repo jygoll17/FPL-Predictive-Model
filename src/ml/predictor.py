@@ -1,5 +1,6 @@
 """FPL Points Predictor interface."""
 
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
@@ -22,8 +23,16 @@ class FPLPredictor:
         """
         if model_path is None:
             model_path = MODELS_DIR / "fpl_points_model.joblib"
+        path = Path(model_path)
 
-        self.model = FPLPointsModel.load(str(model_path))
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Model file not found: {path}\n\n"
+                "Train the model first with:\n  python train_model.py\n\n"
+                "For a quick run (no tuning):\n  python train_model.py --quick"
+            )
+
+        self.model = FPLPointsModel.load(str(path))
         self.feature_engineer = FeatureEngineer()
 
     def predict_gameweek(

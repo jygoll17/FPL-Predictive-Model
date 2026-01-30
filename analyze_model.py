@@ -17,6 +17,10 @@ from sklearn.inspection import permutation_importance
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+from src.ml.check_omp import check_ml_backends
+
+check_ml_backends()
+
 from src.config import ANALYSIS_DIR, MODELS_DIR
 from src.ml.model import FPLPointsModel
 from src.ml.predictor import FPLPredictor

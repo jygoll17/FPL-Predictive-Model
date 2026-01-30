@@ -160,15 +160,24 @@ class CSVHandler:
         self, performances: List[GameweekPerformance], player_map: Dict[int, int]
     ) -> None:
         """Save gameweek stats to CSV with player ID mapping."""
+        # If id_mappings has no players (e.g. fresh or JSON keys), build map from players CSV
+        if not player_map and PLAYERS_CSV.exists():
+            players_df = pd.read_csv(PLAYERS_CSV)
+            if "fpl_id" in players_df.columns and "player_id" in players_df.columns:
+                for _, row in players_df.iterrows():
+                    try:
+                        fid, pid = int(row["fpl_id"]), int(row["player_id"])
+                        player_map[fid] = pid
+                        player_map[str(fid)] = pid
+                    except (ValueError, TypeError):
+                        pass
+
         rows = []
         record_id = 1
 
         for perf in performances:
-            # Map FPL ID to our sequential ID
-            perf.player_id = player_map.get(perf.fpl_id)
-            if perf.player_id is None:
-                continue
-
+            # Map FPL ID to our sequential ID (JSON keys are strings)
+            perf.player_id = player_map.get(perf.fpl_id) or player_map.get(str(perf.fpl_id))
             perf.record_id = record_id
             record_id += 1
             rows.append(perf.to_csv_row())
@@ -188,11 +197,71 @@ class CSVHandler:
             self.update_metadata("gameweek_stats")
 
     def load_gameweek_stats(self) -> pd.DataFrame:
-        """Load gameweek stats as DataFrame."""
+        """Load gameweek stats as DataFrame. Ensures player_id exists for feature engineering."""
         if not PLAYER_GAMEWEEK_CSV.exists():
             return pd.DataFrame()
 
-        return pd.read_csv(PLAYER_GAMEWEEK_CSV)
+        df = pd.read_csv(PLAYER_GAMEWEEK_CSV)
+
+        # Normalize FPL-Data CSV column name to fpl_id (external CSV uses "element")
+        if "fpl_id" not in df.columns and "element" in df.columns:
+            df["fpl_id"] = pd.to_numeric(df["element"], errors="coerce")
+
+        # Ensure player_id exists (required by feature engineer). Derive from fpl_id if missing.
+        if "player_id" not in df.columns and "fpl_id" in df.columns:
+            self.load_id_mappings()
+            player_map = self.id_mappings.get("players", {})
+            # If id_mappings is empty, build fpl_id -> player_id from players CSV
+            if not player_map and PLAYERS_CSV.exists():
+                players_df = pd.read_csv(PLAYERS_CSV)
+                if "fpl_id" in players_df.columns and "player_id" in players_df.columns:
+                    for _, row in players_df.iterrows():
+                        try:
+                            fid, pid = int(row["fpl_id"]), int(row["player_id"])
+                            player_map[fid] = pid
+                            player_map[str(fid)] = pid
+                        except (ValueError, TypeError):
+                            pass
+
+            def fpl_to_player_id(fpl_id):
+                if pd.isna(fpl_id):
+                    return None
+                try:
+                    fid = int(fpl_id)
+                    return player_map.get(fid) or player_map.get(str(fid))
+                except (ValueError, TypeError):
+                    return None
+
+            df["player_id"] = df["fpl_id"].map(fpl_to_player_id)
+
+        # If player_id exists but has NaNs, fill from fpl_id mapping
+        if "player_id" in df.columns and "fpl_id" in df.columns and df["player_id"].isna().any():
+            self.load_id_mappings()
+            player_map = self.id_mappings.get("players", {})
+            if not player_map and PLAYERS_CSV.exists():
+                players_df = pd.read_csv(PLAYERS_CSV)
+                if "fpl_id" in players_df.columns and "player_id" in players_df.columns:
+                    for _, row in players_df.iterrows():
+                        try:
+                            fid, pid = int(row["fpl_id"]), int(row["player_id"])
+                            player_map[fid] = pid
+                            player_map[str(fid)] = pid
+                        except (ValueError, TypeError):
+                            pass
+
+            def fpl_to_player_id(fpl_id):
+                if pd.isna(fpl_id):
+                    return None
+                try:
+                    fid = int(fpl_id)
+                    return player_map.get(fid) or player_map.get(str(fid))
+                except (ValueError, TypeError):
+                    return None
+
+            missing = df["player_id"].isna()
+            df.loc[missing, "player_id"] = df.loc[missing, "fpl_id"].map(fpl_to_player_id)
+
+        return df
 
     def get_player_id_map(self) -> Dict[int, int]:
         """Get mapping from FPL ID to sequential player ID."""
