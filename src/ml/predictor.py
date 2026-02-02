@@ -60,7 +60,18 @@ class FPLPredictor:
         )
 
         # Filter to target gameweek
-        df = df[df["gameweek"] == gameweek]
+        df_target = df[df["gameweek"] == gameweek]
+        
+        # If target gameweek doesn't exist (forward prediction), create it
+        if df_target.empty:
+            # Get latest gameweek for each player
+            max_gw = df["gameweek"].max()
+            df_latest = df[df["gameweek"] == max_gw].copy()
+            # Create rows for target gameweek with latest features
+            df_target = df_latest.copy()
+            df_target["gameweek"] = gameweek
+        
+        df = df_target
 
         # Filter by minimum minutes if specified
         if min_minutes > 0:
