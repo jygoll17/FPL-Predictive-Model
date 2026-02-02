@@ -37,6 +37,11 @@ def main():
     fixtures_df = pd.DataFrame([f.to_csv_row() for f in handler.load_fixtures()])
     gameweek_stats_df = handler.load_gameweek_stats()
 
+    # #region agent log
+    _log_path = Path(__file__).parent / ".cursor" / "debug.log"
+    with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "train_model:after_load", "message": "data loaded", "data": {"gw_rows": len(gameweek_stats_df), "gw_has_player_id": "player_id" in gameweek_stats_df.columns if len(gameweek_stats_df) else False, "players_player_id_dtype": str(players_df["player_id"].dtype) if "player_id" in players_df.columns else "missing"}, "hypothesisId": "B"}) + "\n")
+    # #endregion
+
     if len(players_df) == 0 or len(clubs_df) == 0:
         print("Error: No data found. Run collect_data.py first.")
         return

@@ -198,10 +198,17 @@ class CSVHandler:
 
     def load_gameweek_stats(self) -> pd.DataFrame:
         """Load gameweek stats as DataFrame. Ensures player_id exists for feature engineering."""
+        # #region agent log
+        _log_path = "/Users/jaywanthgollakarum/Documents/GitHub/FPL-Predictive-Model/.cursor/debug.log"
+        with open(_log_path, "a") as _f: _f.write(json.dumps({"location": "csv_handler.load_gameweek_stats:entry", "message": "load_gameweek_stats", "data": {"file_exists": PLAYER_GAMEWEEK_CSV.exists()}, "hypothesisId": "A"}) + "\n")
+        # #endregion
         if not PLAYER_GAMEWEEK_CSV.exists():
             return pd.DataFrame()
 
         df = pd.read_csv(PLAYER_GAMEWEEK_CSV)
+        # #region agent log
+        with open(_log_path, "a") as _f: _f.write(json.dumps({"location": "csv_handler.load_gameweek_stats:after_read", "message": "after read_csv", "data": {"shape": list(df.shape), "columns": list(df.columns), "has_fpl_id": "fpl_id" in df.columns, "has_player_id": "player_id" in df.columns}, "hypothesisId": "A"}) + "\n")
+        # #endregion
 
         # Normalize FPL-Data CSV column name to fpl_id (external CSV uses "element")
         if "fpl_id" not in df.columns and "element" in df.columns:
@@ -232,7 +239,8 @@ class CSVHandler:
                 except (ValueError, TypeError):
                     return None
 
-            df["player_id"] = df["fpl_id"].map(fpl_to_player_id)
+            mapped = df["fpl_id"].map(fpl_to_player_id)
+            df["player_id"] = pd.to_numeric(mapped, errors="coerce")
 
         # If player_id exists but has NaNs, fill from fpl_id mapping
         if "player_id" in df.columns and "fpl_id" in df.columns and df["player_id"].isna().any():
@@ -259,7 +267,22 @@ class CSVHandler:
                     return None
 
             missing = df["player_id"].isna()
-            df.loc[missing, "player_id"] = df.loc[missing, "fpl_id"].map(fpl_to_player_id)
+            mapped = df.loc[missing, "fpl_id"].map(fpl_to_player_id)
+            df.loc[missing, "player_id"] = pd.to_numeric(mapped, errors="coerce")
+
+        # Ensure player_id is int64 for merge (drop rows with missing player_id)
+        if "player_id" in df.columns:
+            df["player_id"] = pd.to_numeric(df["player_id"], errors="coerce")
+            _before_drop = len(df)
+            df = df.dropna(subset=["player_id"])
+            df["player_id"] = df["player_id"].astype("int64")
+            # #region agent log
+            with open(_log_path, "a") as _f: _f.write(json.dumps({"location": "csv_handler.load_gameweek_stats:exit", "message": "before return", "data": {"rows_before_drop": _before_drop, "rows_after_drop": len(df), "player_id_dtype": str(df["player_id"].dtype)}, "hypothesisId": "A"}) + "\n")
+            # #endregion
+        else:
+            # #region agent log
+            with open(_log_path, "a") as _f: _f.write(json.dumps({"location": "csv_handler.load_gameweek_stats:exit_no_player_id", "message": "no player_id column", "data": {"rows": len(df), "columns": list(df.columns)[:10]}, "hypothesisId": "A"}) + "\n")
+            # #endregion
 
         return df
 

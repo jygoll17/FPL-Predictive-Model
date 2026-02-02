@@ -79,6 +79,11 @@ class TrainingPipeline:
         train_df = train_df[train_df["minutes"] >= min_minutes]
         val_df = val_df[val_df["minutes"] >= min_minutes]
 
+        # #region agent log
+        _log_path = __import__("pathlib").Path(__file__).resolve().parent.parent.parent / ".cursor" / "debug.log"
+        with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "training.prepare_data:after_filter", "message": "train/val sizes", "data": {"train_rows": len(train_df), "val_rows": len(val_df), "train_gw_end": train_gw_end, "val_gw_start": val_gw_start, "val_gw_end": val_gw_end}, "hypothesisId": "D"}) + "\n")
+        # #endregion
+
         # Get feature columns
         feature_cols = self.feature_engineer.feature_names
 
