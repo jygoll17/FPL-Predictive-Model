@@ -33,10 +33,6 @@ class FeatureEngineer:
         Returns:
             DataFrame with engineered features
         """
-        # #region agent log
-        _log_path = __import__("pathlib").Path(__file__).resolve().parent.parent.parent / ".cursor" / "debug.log"
-        with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "features.engineer_features:before_merge", "message": "before first merge", "data": {"gw_shape": list(gameweek_stats.shape), "gw_player_id_dtype": str(gameweek_stats["player_id"].dtype) if "player_id" in gameweek_stats.columns else "missing", "players_player_id_dtype": str(players["player_id"].dtype) if "player_id" in players.columns else "missing"}, "hypothesisId": "B"}) + "\n")
-        # #endregion
         # Merge data (suffixes so gameweek_stats columns keep names for rolling/features)
         df = gameweek_stats.copy()
         df = df.merge(
@@ -46,9 +42,6 @@ class FeatureEngineer:
             how="left",
             suffixes=("", "_player"),
         )
-        # #region agent log
-        with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "features.engineer_features:after_first_merge", "message": "after first merge", "data": {"merged_shape": list(df.shape), "has_team_id": "team_id" in df.columns}, "hypothesisId": "E"}) + "\n")
-        # #endregion
         df["opponent_team_id"] = pd.to_numeric(df["opponent_team_id"], errors="coerce")
         df = df.merge(
             clubs,
@@ -57,9 +50,6 @@ class FeatureEngineer:
             how="left",
             suffixes=("", "_opponent"),
         )
-        # #region agent log
-        with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "features.engineer_features:after_opponent_merge", "message": "after opponent merge", "data": {"shape": list(df.shape)}, "hypothesisId": "C"}) + "\n")
-        # #endregion
         df["team_id"] = pd.to_numeric(df["team_id"], errors="coerce")
         # Merge team data for player's team
         df = df.merge(
@@ -69,9 +59,6 @@ class FeatureEngineer:
             how="left",
             suffixes=("", "_team"),
         )
-        # #region agent log
-        with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "features.engineer_features:after_team_merge", "message": "after team merge", "data": {"shape": list(df.shape)}, "hypothesisId": "C"}) + "\n")
-        # #endregion
         df["fixture_id"] = pd.to_numeric(df["fixture_id"], errors="coerce")
         # Merge fixture data
         df = df.merge(
@@ -81,15 +68,9 @@ class FeatureEngineer:
             how="left",
             suffixes=("", "_fixture"),
         )
-        # #region agent log
-        with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "features.engineer_features:after_fixture_merge", "message": "after fixture merge", "data": {"shape": list(df.shape)}, "hypothesisId": "C"}) + "\n")
-        # #endregion
 
         # Sort by player and gameweek
         df = df.sort_values(["player_id", "gameweek"]).reset_index(drop=True)
-        # #region agent log
-        with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "features.engineer_features:after_sort", "message": "after sort", "data": {"shape": list(df.shape)}, "hypothesisId": "F"}) + "\n")
-        # #endregion
         # Filter to target gameweek if specified
         if target_gw is not None:
             df = df[df["gameweek"] <= target_gw]
@@ -99,9 +80,6 @@ class FeatureEngineer:
 
         # 1. Rolling Averages (Multiple Windows: 3, 5, 10 games)
         df = self._add_rolling_averages(df, grouped)
-        # #region agent log
-        with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "features.engineer_features:after_rolling_avgs", "message": "after _add_rolling_averages", "data": {"shape": list(df.shape)}, "hypothesisId": "F"}) + "\n")
-        # #endregion
         # 2. Rolling Sums
         df = self._add_rolling_sums(df, grouped)
 
@@ -119,9 +97,6 @@ class FeatureEngineer:
 
         # 7. Opponent Features
         df = self._add_opponent_features(df, clubs, fixtures)
-        # #region agent log
-        with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "features.engineer_features:after_opponent_feat", "message": "after _add_opponent_features", "data": {"shape": list(df.shape)}, "hypothesisId": "F"}) + "\n")
-        # #endregion
         # 8. Team Strength Features
         df = self._add_team_strength_features(df)
 
@@ -130,9 +105,6 @@ class FeatureEngineer:
 
         # 10. Fixture Features
         df = self._add_fixture_features(df)
-        # #region agent log
-        with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "features.engineer_features:after_fixture_feat", "message": "after _add_fixture_features", "data": {"shape": list(df.shape)}, "hypothesisId": "F"}) + "\n")
-        # #endregion
         # 11. Position Features (One-Hot)
         df = self._add_position_features(df)
 
@@ -140,28 +112,42 @@ class FeatureEngineer:
         df = self._add_position_specific_features(df)
 
         # Store feature names
+        # Exclude IDs, targets, and any string columns (names etc.) so X is numeric for XGBoost
+        exclude = [
+            "player_id",
+            "fpl_id",
+            "gameweek",
+            "points",
+            "record_id",
+            "player_name",
+            "name",
+            "first_name",
+            "second_name",
+            "web_name",
+            "opponent",
+            "home_away",
+            "kickoff_time",
+            "date",
+            "short_name",
+            "home_team_name",
+            "away_team_name",
+            "season",
+            "status",
+            "position",  # raw string; one-hot creates position_GKP, position_DEF, etc.
+            "news",
+            "news_added",
+            "short_name_opponent",
+            "short_name_team",
+            "name_opponent",
+            "name_team",
+        ]
         feature_cols = [
             col
             for col in df.columns
-            if col
-            not in [
-                "player_id",
-                "fpl_id",
-                "gameweek",
-                "points",
-                "record_id",
-                "player_name",
-                "opponent",
-                "home_away",
-                "kickoff_time",
-                "date",
-            ]
+            if col not in exclude and pd.api.types.is_numeric_dtype(df[col])
         ]
         self.feature_names = feature_cols
 
-        # #region agent log
-        with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "features.engineer_features:return", "message": "engineer_features done", "data": {"shape": list(df.shape), "n_features": len(feature_cols)}, "hypothesisId": "D"}) + "\n")
-        # #endregion
         return df
 
     def _add_rolling_averages(self, df: pd.DataFrame, grouped) -> pd.DataFrame:

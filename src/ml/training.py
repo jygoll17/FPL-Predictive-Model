@@ -79,19 +79,16 @@ class TrainingPipeline:
         train_df = train_df[train_df["minutes"] >= min_minutes]
         val_df = val_df[val_df["minutes"] >= min_minutes]
 
-        # #region agent log
-        _log_path = __import__("pathlib").Path(__file__).resolve().parent.parent.parent / ".cursor" / "debug.log"
-        with open(_log_path, "a") as _f: _f.write(__import__("json").dumps({"location": "training.prepare_data:after_filter", "message": "train/val sizes", "data": {"train_rows": len(train_df), "val_rows": len(val_df), "train_gw_end": train_gw_end, "val_gw_start": val_gw_start, "val_gw_end": val_gw_end}, "hypothesisId": "D"}) + "\n")
-        # #endregion
-
         # Get feature columns
         feature_cols = self.feature_engineer.feature_names
 
-        # Prepare X and y
-        X_train = train_df[feature_cols].fillna(0).values
+        # Prepare X and y (replace inf so XGBoost accepts the data)
+        train_X = train_df[feature_cols].replace([np.inf, -np.inf], np.nan).fillna(0)
+        X_train = train_X.values
         y_train = train_df["points"].values
 
-        X_val = val_df[feature_cols].fillna(0).values
+        val_X = val_df[feature_cols].replace([np.inf, -np.inf], np.nan).fillna(0)
+        X_val = val_X.values
         y_val = val_df["points"].values
 
         return X_train, X_val, y_train, y_val
